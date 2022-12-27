@@ -1,0 +1,33 @@
+node{
+    
+    def mavenHome = tool name: "maven3.8.6"
+    
+    //Checkout stage
+    stage('CheckoutCode'){
+        git credentialsId: 'Git_Credentials', url: 'https://github.com/sircharlesnkansah/maven-web-app.git'
+    }
+    
+    //Build stage
+    stage('Build'){
+        sh "$mavenHome/bin/mvn clean package"
+    }
+    
+    //Generate SonarQube Report
+    stage('SonarCodeReview'){
+        withSonarQubeEnv(credentialsId: 'sonarToken') {
+         sh "$mavenHome/bin/mvn sonar:sonar"
+       }
+        
+    //Upload Artifact into Artifact Repo Nexus
+    stage('UploadBuildArtifact'){
+        nexusArtifactUploader artifacts: [[artifactId: '01-maven-web-app', classifier: '', file: 'target/01-maven-web-app.war', type: 'war']], credentialsId: 'Nexus-Credentials', groupId: 'in.ashokit', nexusUrl: '44.206.237.167:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'ashokit-pipeline-snapshot', version: '1.0-SNAPSHOT'
+    }
+    }
+    
+    //Deploy Application into Tomcat server
+    stage('DeployAppIntoTomcat'){
+     sshagent(['ssh-Agent-Tomcat-Credentials']) {
+    sh 'scp -o StrictHostKeyChecking=no target/01-maven-web-app.war ec2-user@3.91.17.88:/opt/apache-tomcat-9.0.70/webapps'
+        }
+    }
+}
