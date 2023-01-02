@@ -20,14 +20,14 @@ node{
         
     //Upload Artifact into Artifact Repo Nexus
     stage('UploadBuildArtifact'){
-        nexusArtifactUploader artifacts: [[artifactId: '01-maven-web-app', classifier: '', file: 'target/01-maven-web-app.war', type: 'war']], credentialsId: 'Nexus-Credentials', groupId: 'in.ashokit', nexusUrl: '35.173.122.75:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'ashokit-pipeline-snapshot', version: '1.0-SNAPSHOT'
+        nexusArtifactUploader artifacts: [[artifactId: '01-maven-web-app', classifier: '', file: 'target/01-maven-web-app.war', type: 'war']], credentialsId: 'Nexus-Credentials', groupId: 'in.ashokit', nexusUrl: '54.85.181.86:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'ashokit-pipeline-snapshot', version: '1.0-SNAPSHOT'
     }
     }
     
     //Deploy Application into Tomcat server
     stage('DeployAppIntoTomcat'){
      sshagent(['ssh-Agent-Tomcat-Credentials']) {
-    sh 'scp -o StrictHostKeyChecking=no target/01-maven-web-app.war ec2-user@44.202.105.116:/opt/tomcat9/webapps'
+    sh 'scp -o StrictHostKeyChecking=no target/01-maven-web-app.war ec2-user@54.91.183.59:/opt/tomcat9/webapps'
         }
     }
 }
