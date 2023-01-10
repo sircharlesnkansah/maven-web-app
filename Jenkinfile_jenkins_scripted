@@ -1,0 +1,44 @@
+node{
+
+	def mavenHome = tool name: "maven3.8.6"
+	
+	//CheckoutCode stage
+	stage('Checkout'){
+	 git credentialsId: 'Git_Credentials', url: 'https://github.com/sircharlesnkansah/maven-web-app.git'
+	}
+
+    //Build stage
+	stage('Build'){
+	 sh "$mavenHome/bin/mvn clean package"
+	}
+	
+	//GenerateSonarQubeReport
+	stage('Code Quality scan'){
+	    withSonarQubeEnv(credentialsId: 'sonarQubeToken') {
+	    sh "$mavenHome/bin/mvn sonar:sonar"
+		}
+	}
+	
+	//CodeQualityCoverage
+	    stage('Code Coverage'){
+	    jacoco deltaBranchCoverage: '80', deltaClassCoverage: '80', deltaComplexityCoverage: '80', deltaInstructionCoverage: '80', deltaLineCoverage: '80', deltaMethodCoverage: '80'
+	}
+
+    //UploadArtifactIntoArtifactoryNexus
+	    stage('Artifactory Upload'){
+	nexusArtifactUploader artifacts: [[artifactId: '01-maven-web-app', classifier: '', file: 'target/01-maven-web-app.war', type: 'war']], credentialsId: 'nexus-Credentials', groupId: 'in.ashokit', nexusUrl: '3.84.5.254:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'jenkins-scripted-snapshot', version: '1.0-SNAPSHOT'
+	}
+	
+	//DEV Deploy
+	stage('Deploying to DEV environment'){
+	deploy adapters: [tomcat9(credentialsId: 'tomcat-Credential', path: '', url: 'http://34.227.149.116:8080')], contextPath: null, war: '**/*.war'
+	}
+	
+//SlackNotifications
+	stage('Slack Notifications'){
+    slackSend(channel:'process-automations', message: "DEV Deployment was successful, here is the info -  Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+	}
+
+
+
+}//Closing Pipeline
