@@ -1,0 +1,61 @@
+pipeline {
+    agent any
+    
+    tools {
+        maven 'maven3.8.6'
+    }
+
+    stages{
+        //CheckoutCode
+        stage('Checkout'){
+            steps{
+                checkout([$class: 'GitSCM', branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: 'Git_Credentials', url: 'https://github.com/sircharlesnkansah/maven-web-app.git']]])
+            }
+        }
+        
+        //Build
+        stage('Build'){
+            steps{
+                sh 'mvn clean install'    
+            }
+        }
+        
+        //GenerateSonarQubeReport
+        stage('Code Quality Scan'){
+            steps{
+                withSonarQubeEnv('sonarQube') {
+                    sh 'mvn sonar:sonar'
+                }
+            }
+        }
+        
+        //CodeQualityCoverage
+        stage('Code Coverage'){
+            steps{
+                jacoco deltaBranchCoverage: '80', deltaClassCoverage: '80', deltaComplexityCoverage: '80', deltaInstructionCoverage: '80', deltaLineCoverage: '80', deltaMethodCoverage: '80'
+            }
+        }
+        
+        //Upload Artifact into Artifact Repo Nexus 3
+        stage('UploadBuildArtifact'){
+            steps{
+             nexusArtifactUploader artifacts: [[artifactId: '01-maven-web-app', classifier: '', file: 'target/01-maven-web-app.war', type: 'war']], credentialsId: 'nexus-Credentials', groupId: 'in.ashokit', nexusUrl: '3.92.45.38:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'jenkins-declarative-snapshot', version: '1.0-SNAPSHOT'   
+            }
+        }
+        
+        //Deploying to DEV Environment
+        stage('DEV Environment deploy'){
+            steps{
+                deploy adapters: [tomcat9(credentialsId: 'tomcat-Credential', path: '', url: 'http://54.159.15.25:8080')], contextPath: null, war: '**/*.war'
+            }
+        }
+        
+        //Slack Notifications
+        stage('Slack Notifications'){
+            steps{
+                slackSend channel: 'process-automations', message: 'DEV Job was successful'
+            }
+        }
+        
+    }//stages closing
+}//pipeline closing
